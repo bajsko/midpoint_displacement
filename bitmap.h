@@ -21,6 +21,14 @@
 #define BM_COMPRESSION_METHOD_RGB 0
 #define BM_COMPRESSION_METHOD_RLE8 1
 
+#define BM_COLOR_PLANE_OFFSET 0x1A
+
+#define BM_VERT_RES_OFFSET 0x2A
+#define BM_HORIZ_RES_OFFSET 0x26
+
+#define BM_HEADER_SIZE_OFFSET 0x0E
+#define BM_HEADER_SIZE 40
+
 #define BM_ERROR 0
 
 typedef unsigned int uint32;
@@ -36,6 +44,8 @@ typedef struct s_bitmap
 	void* data;
 	uint32 data_size;
 	uint32 data_pos;
+	uint32 horizontal_res;
+	uint32 vertical_res;
 } s_bitmap;
 
 

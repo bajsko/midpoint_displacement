@@ -190,6 +190,9 @@ s_bitmap* bmRead(const char* string)
 	uint32 width = readuint(BM_WIDTH_OFFSET, header);
 	uint32 height = readuint(BM_HEIGHT_OFFSET, header);
 
+	uint32 vert_res = readuint(BM_VERT_RES_OFFSET, header);
+	uint32 horiz_res = readuint(BM_HORIZ_RES_OFFSET, header);
+
 	uint16 bits_per_pixel = readushort(BM_BITS_PER_PIXEL_OFFSET, header);
 
 	if (data_pos == 0) data_pos = 54; //end of header
@@ -216,6 +219,8 @@ s_bitmap* bmRead(const char* string)
 	bitmap->data_size = data_size;
 	bitmap->bits_per_pixel = bits_per_pixel;
 	bitmap->data_pos = data_pos;
+	bitmap->vertical_res = vert_res;
+	bitmap->horizontal_res = horiz_res;
 
 	fclose(file);
 
@@ -240,11 +245,17 @@ void bmWrite(s_bitmap* bitmap, const char* filename)
 	uchar* data = (uchar*)bitmap->data;
 
 	writeuint(bitmap->file_size, BM_FILE_SIZE_OFFSET, header);
+	writeuint(BM_HEADER_SIZE, BM_HEADER_SIZE_OFFSET, header);
 	writeuint(bitmap->width, BM_WIDTH_OFFSET, header);
 	writeuint(bitmap->height, BM_HEIGHT_OFFSET, header);
 	writeuint(bitmap->data_pos, BM_DATA_OFFSET, header);
 	writeuint(bitmap->data_size, BM_DATA_SIZE_OFFSET, header);
-	writeuint(bitmap->bits_per_pixel, BM_BITS_PER_PIXEL_OFFSET, header);
+
+	writeushort(bitmap->bits_per_pixel, BM_BITS_PER_PIXEL_OFFSET, header);
+	writeushort(0x1, BM_COLOR_PLANE_OFFSET, header);
+
+	writeuint(bitmap->vertical_res, BM_VERT_RES_OFFSET, header);
+	writeuint(bitmap->horizontal_res, BM_HORIZ_RES_OFFSET, header);
 
 	FILE *file = fopen(filename, "wb");
 
@@ -254,6 +265,7 @@ void bmWrite(s_bitmap* bitmap, const char* filename)
 	}
 
 	fwrite(header, 1, 54, file);
+	fwrite(data, 1, bitmap->data_size, file);
 
 	fclose(file);
 }
