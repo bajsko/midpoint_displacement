@@ -97,15 +97,15 @@ uint16 readushort(int pos, uchar* buffer)
 	return final;
 }
 
-/*
+/*///////////////////////////////////////////////////////////////
 writeuint(uint32 w, int pos, uchar* buffer)
 
-Purpose: Writes w to buffer starting at positioin pos
+Purpose: Writes w to buffer starting at position pos
 
 Parameters: uint32 w: uint32 to write
 			int pos: position inside of buffer to start writing
 			uchar* buffer: buffer to write to
-*/
+*////////////////////////////////////////////////////////////////
 void writeuint(uint32 w, int pos, uchar* buffer)
 {
 	uchar c1 = w;
@@ -157,7 +157,7 @@ s_bitmap* bmRead(const char* string)
 	FILE *file = fopen(string, "rb");
 	if (!file)
 	{
-		printf("Could not open %s\n", string);
+		printf("bmRead: Could not open %s\n", string);
 		return BM_ERROR;
 	}
 
@@ -166,13 +166,13 @@ s_bitmap* bmRead(const char* string)
 
 	if (!header)
 	{
-		printf("Could not read header\n");
+		printf("bmRead: Could not read header\n");
 		return BM_ERROR;
 	}
 
 	if (header[0] + header[1] != BM_HEADER_MAGIC)
 	{
-		printf("File %s is not a bitmap!", string);
+		printf("bmRead: File %s is not a bitmap!", string);
 		return BM_ERROR;
 	}
 
@@ -180,50 +180,61 @@ s_bitmap* bmRead(const char* string)
 
 	if (compression != BM_COMPRESSION_METHOD_RGB)
 	{
-		printf("Bitmap uses compression of type: %d, while only compression of type 0 (RGB) is supported.\n", compression);
+		printf("bmRead: Bitmap uses compression of type: %d, while only compression of type 0 (RGB) is supported.\n", compression);
 		return BM_ERROR;
 	}
 
 	uint32 file_size = readuint(BM_FILE_SIZE_OFFSET, header);
 	uint32 data_pos = readuint(BM_DATA_OFFSET, header);
 	uint32 data_size = readuint(BM_DATA_SIZE_OFFSET, header);
-	uint32 width = readuint(BM_WIDTH_OFFSET, header);
-	uint32 height = readuint(BM_HEIGHT_OFFSET, header);
+	signed int width = (signed int)readuint(BM_WIDTH_OFFSET, header);
+	signed int height = (signed int)readuint(BM_HEIGHT_OFFSET, header);
 
-	uint32 vert_res = readuint(BM_VERT_RES_OFFSET, header);
-	uint32 horiz_res = readuint(BM_HORIZ_RES_OFFSET, header);
+	signed int vert_res = readuint(BM_VERT_RES_OFFSET, header);
+	signed int horiz_res = readuint(BM_HORIZ_RES_OFFSET, header);
 
 	uint16 bits_per_pixel = readushort(BM_BITS_PER_PIXEL_OFFSET, header);
 
 	if (data_pos == 0) data_pos = 54; //end of header
+
 	if (data_size == 0) data_size = width * height * 3;
 	if (data_size == 0)
 	{
-		printf("Could not compute pixel data size\n");
+		printf("bmRead: Could not compute pixel data size\n");
 		return BM_ERROR;
 	}
 
 	uchar *data = new uchar[data_size];
-	fread(data, 1, data_size, file);
-	
 	if (!data)
 	{
-		printf("Could not read data\n");
+		printf("bmRead: Could not allocate data(0) memory!\n");
 		return BM_ERROR;
 	}
+
+	fread(data, 1, data_size, file);
+
+	bitmap->data = (uchar*)malloc(data_size * sizeof(uchar));
+	if (!bitmap->data)
+	{
+		printf("bmRead: Could not allocate data(1) memory!\n");
+		return BM_ERROR;
+	}
+
+	memcpy(bitmap->data, data, data_size * sizeof(uchar));
 
 	bitmap->file_size = file_size;
 	bitmap->width = width;
 	bitmap->height = height;
-	bitmap->data = data;
 	bitmap->data_size = data_size;
 	bitmap->bits_per_pixel = bits_per_pixel;
 	bitmap->data_pos = data_pos;
 	bitmap->vertical_res = vert_res;
 	bitmap->horizontal_res = horiz_res;
+	bitmap->compression = compression;
 
 	fclose(file);
 
+	delete data;
 	return bitmap;
 }
 
@@ -239,7 +250,7 @@ Parameters: s_bitmap* bitmap: Bitmap to write
 void bmWrite(s_bitmap* bitmap, const char* filename)
 {
 
-	printf("Writing bmp %s\n", filename);
+	printf("bmWrite: Writing bmp %s\n", filename);
 
 	uchar header[54] = { 'B', 'M', 0 };
 	uchar* data = (uchar*)bitmap->data;
@@ -261,11 +272,90 @@ void bmWrite(s_bitmap* bitmap, const char* filename)
 
 	if (!file)
 	{
-		printf("Could not open file %s\n", filename);
+		printf("bmWrite: Could not open file %s\n", filename);
+		return;
 	}
 
 	fwrite(header, 1, 54, file);
 	fwrite(data, 1, bitmap->data_size, file);
 
 	fclose(file);
+
+	printf("bmWrite: Finished!\n");
+}
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////
+bmCreate(int width, int height, s_bmPixel* pixelArray)
+
+Purpose: Creates a new bitmap with specified width & height
+			default header values:	compression: BM_COMPRESSION_METHOD_RGB
+									bits_per_pixel: 24
+									horizontal_res: 0xc40e
+									vertical_res: 0xc40e
+
+Parameters:	int width: width of bmp
+			int height: height of bmp
+			s_bmPixel* pixelArray: array of pixels to be used
+
+Returns s_bitmap* filled with data or BM_ERROR.
+
+*/////////////////////////////////////////////////////////////////////////////////////////////////
+s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray)
+{
+	s_bitmap* bitmap = (s_bitmap*)calloc(sizeof(s_bitmap), 1);
+
+	bitmap->width = width;
+	bitmap->height = height;
+	bitmap->data_pos = 54;
+	bitmap->compression = BM_COMPRESSION_METHOD_RGB;
+	bitmap->bits_per_pixel = 24;
+	bitmap->horizontal_res = 0xC40E;
+	bitmap->vertical_res = 0xC40E;
+
+	int rowSize = ((bitmap->bits_per_pixel * width + 31) / 32) * 4;
+	int pixelArraySize = rowSize * height;
+
+	bitmap->file_size = BM_HEADER_SIZE + pixelArraySize;
+	bitmap->data_size = pixelArraySize;
+
+	uchar* data = (uchar*)malloc(bitmap->data_size);
+	if (!data)
+	{
+		printf("bmCreate: Could not allocate data(0) memory!\n");
+		return BM_ERROR;
+	}
+
+	bitmap->data = (uchar*)malloc(bitmap->data_size);
+	if (!bitmap->data)
+	{
+		printf("bmCreate: Could not allocate data(1) memory!\n");
+		return BM_ERROR;
+	}
+
+	////TODOOO::: fix the algorithm!
+	for (int i = 0; i < pixelArraySize; i++)
+		data[i] = 0xFF;
+
+	memcpy(bitmap->data, data, pixelArraySize * sizeof(uchar));
+
+	delete data;
+	return bitmap;
+}
+
+void bmDumpData(s_bitmap* bitmap)
+{
+	printf("---------------------------\n");
+	printf("Bitmap dump data report\n");
+	printf("Total file size (bytes): %d\n", bitmap->file_size);
+	printf("Bitmap data size (bytes): %d\n", bitmap->data_size);
+	printf("Vertical res: %d\n", bitmap->vertical_res);
+	printf("Horizontal res: %d\n", bitmap->horizontal_res);
+	printf("Compression mode: %d\n", bitmap->compression);
+	printf("-------------------------------\n");
+}
+
+void bmFree(s_bitmap* bitmap)
+{
+	delete bitmap->data;
+	delete bitmap;
 }

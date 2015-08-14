@@ -2,9 +2,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define BM_HEADER_MAGIC 0x8F
-#define BM_HEADER_SIZE 0x36;
+#define BM_HEADER_SIZE 0x28
 
 #define BM_FILE_SIZE_OFFSET 0x02
 #define BM_DATA_OFFSET 0x0A
@@ -27,7 +28,6 @@
 #define BM_HORIZ_RES_OFFSET 0x26
 
 #define BM_HEADER_SIZE_OFFSET 0x0E
-#define BM_HEADER_SIZE 40
 
 #define BM_ERROR 0
 
@@ -41,27 +41,24 @@ typedef struct s_bitmap
 	uint32 width;
 	uint32 height;
 	uint16 bits_per_pixel;
-	void* data;
+	uchar* data;
 	uint32 data_size;
 	uint32 data_pos;
-	uint32 horizontal_res;
-	uint32 vertical_res;
+	signed int horizontal_res;
+	signed int vertical_res;
+	uint32 compression;
 } s_bitmap;
 
+typedef struct s_bmPixel
+{
+	uchar r;
+	uchar g;
+	uchar b;
+} s_bmPixel;
 
-/*///////////////////////////////////////////////////////////////////////
-bmRead(const char* string)
 
-Purpose: Checks that specified file is a bitmap file,
-then reads header and lastly data.
-If any error occurs, BM_ERROR is returned
-
-Parameters: const char* string: Path to file to be read.
-
-Returns: s_bitmap filled with data or BM_ERROR.
-
-Notes: This functoin does take care of endianes
-*////////////////////////////////////////////////////////////////////////
 s_bitmap* bmRead(const char* string);
-
 void bmWrite(s_bitmap* bitmap, const char* filename);
+s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray);
+void bmDumpData(s_bitmap* bitmap);
+void bmFree(s_bitmap* bitmap);
