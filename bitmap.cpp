@@ -8,6 +8,8 @@ void writeushort(uint16 w, int pos, uchar* buffer);
 
 int endian();
 
+int roundUp(int num, int multiple);
+
 /*/////////////////////////////////////////
 endian()
 
@@ -135,6 +137,20 @@ void writeushort(uint16 w, int pos, uchar* buffer)
 
 	buffer[pos] = c1;
 	buffer[pos + 1] = c2;
+}
+
+/*////////////////////////////////////////////////////////
+roundUp(int num int multiple)
+
+Purpose: rounds up num to the nearest multiple of multiple
+
+Returns: rounded up num
+*/////////////////////////////////////////////////////////
+int roundUp(int num, int multiple)
+{
+	int remainder = num % multiple;
+
+	return num + multiple - remainder;
 }
 
 /*///////////////////////////////////////////////////////////////////////
@@ -289,7 +305,7 @@ bmCreate(int width, int height, s_bmPixel* pixelArray)
 
 Purpose: Creates a new bitmap with specified width & height
 			default header values:	compression: BM_COMPRESSION_METHOD_RGB
-									bits_per_pixel: 24
+									bits_per_pixel: 24 (only one supported atm)
 									horizontal_res: 0xc40e
 									vertical_res: 0xc40e
 
@@ -302,6 +318,7 @@ Returns s_bitmap* filled with data or BM_ERROR.
 */////////////////////////////////////////////////////////////////////////////////////////////////
 s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray)
 {
+	printf("bmCreate: Creating bitmap..\n");
 	s_bitmap* bitmap = (s_bitmap*)calloc(sizeof(s_bitmap), 1);
 
 	bitmap->width = width;
@@ -313,6 +330,7 @@ s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray)
 	bitmap->vertical_res = 0xC40E;
 
 	int rowSize = ((bitmap->bits_per_pixel * width + 31) / 32) * 4;
+	printf("bmCreate: row size: %d\n", rowSize);
 	int pixelArraySize = rowSize * height;
 
 	bitmap->file_size = BM_HEADER_SIZE + pixelArraySize;
@@ -332,13 +350,39 @@ s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray)
 		return BM_ERROR;
 	}
 
-	////TODOOO::: fix the algorithm!
-	for (int i = 0; i < pixelArraySize; i++)
-		data[i] = 0xFF;
+	//pixel algorithm
+	//TODO: fix padding if needed, is it ever?
+	int nescessaryPadding = 0;
+	if (rowSize % 4 != 0)
+	{
+		nescessaryPadding = roundUp(rowSize, 4) - rowSize;
+		printf("bmCreate: row needed padding %d\n", nescessaryPadding);
+	}
+
+	int bytes_per_pixel = bitmap->bits_per_pixel / 8;
+
+	int y = 0;
+	while (y < height)
+	{
+		for (int i = 0; i < rowSize; i += bytes_per_pixel)
+		{
+			int index = ((i / 3) + (y * width));
+			s_bmPixel pixel = pixelArray[index];
+
+			data[(i) + y*rowSize] = pixel.r;
+			data[(i + 1) + y*rowSize] = pixel.g;
+			data[(i + 2) + y*rowSize] = pixel.b;
+		}
+		y++;
+	}
+	//end
 
 	memcpy(bitmap->data, data, pixelArraySize * sizeof(uchar));
 
 	delete data;
+
+	printf("bmCreate: Finished!\n");
+
 	return bitmap;
 }
 
@@ -348,8 +392,8 @@ void bmDumpData(s_bitmap* bitmap)
 	printf("Bitmap dump data report\n");
 	printf("Total file size (bytes): %d\n", bitmap->file_size);
 	printf("Bitmap data size (bytes): %d\n", bitmap->data_size);
-	printf("Vertical res: %d\n", bitmap->vertical_res);
-	printf("Horizontal res: %d\n", bitmap->horizontal_res);
+	printf("Vertical res: 0x%X\n", bitmap->vertical_res);
+	printf("Horizontal res: 0x%X\n", bitmap->horizontal_res);
 	printf("Compression mode: %d\n", bitmap->compression);
 	printf("-------------------------------\n");
 }
