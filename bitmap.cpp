@@ -369,9 +369,9 @@ s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray)
 			int index = ((i / 3) + (y * width));
 			s_bmPixel pixel = pixelArray[index];
 
-			data[(i) + y*rowSize] = pixel.r;
-			data[(i + 1) + y*rowSize] = pixel.g;
-			data[(i + 2) + y*rowSize] = pixel.b;
+			data[(i) + ((height - 1) - y) * rowSize] = pixel.b;
+			data[(i + 1) + ((height - 1) - y) * rowSize] = pixel.g;
+			data[(i + 2) + ((height - 1) - y) * rowSize] = pixel.r;
 		}
 		y++;
 	}
@@ -379,10 +379,8 @@ s_bitmap* bmCreate(int width, int height, s_bmPixel* pixelArray)
 
 	memcpy(bitmap->data, data, pixelArraySize * sizeof(uchar));
 
-	delete data;
-
 	printf("bmCreate: Finished!\n");
-
+	delete data;
 	return bitmap;
 }
 
