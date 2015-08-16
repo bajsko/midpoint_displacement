@@ -1,31 +1,24 @@
 #include <iostream>
 #include "bitmap.h"
+#include <random>
 
-using namespace std;
+#define BM_TEST_SIZE 256
 
 int main(int argc, const char* argv[])
 {
-	if (argc < 2)
-		return 1;
-
-	s_bitmap *bitmap = bmRead(argv[1]);
-
-	if (bitmap == BM_ERROR)
+	s_bmPixel* pixels = (s_bmPixel*)calloc(sizeof(s_bmPixel), BM_TEST_SIZE * BM_TEST_SIZE);
+	for (int i = 0; i < BM_TEST_SIZE * BM_TEST_SIZE; i++)
 	{
-		getchar();
-		return 0;
+		int random = rand() % 255 + 1;
+		pixels[i] = { 0, random, random };
 	}
 
-	printf("BITMAP INFO on bitmap %s\n", argv[1]);
-	printf("bitmap total file size: %d\n", bitmap->file_size);
-	printf("Bitmap width: %d\n", bitmap->width);
-	printf("Bitmap height: %d\n", bitmap->height);
-	printf("Bitmap data size: %d\n", bitmap->data_size);
-	printf("Bitamp bits per pixel: %d\n", bitmap->bits_per_pixel);
-
-	bmWrite(bitmap, "created_bitmap.bmp");
+	s_bitmap* output = bmCreate(BM_TEST_SIZE, BM_TEST_SIZE, pixels);
+	bmWrite(output, "output.bmp");
 
 	getchar();
 
+	bmFree(output);
+	delete pixels;
 	return 0;
 }
