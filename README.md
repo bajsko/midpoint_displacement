@@ -1,4 +1,3 @@
-# midpoint_displacement
-testing the algo
+# simple bitmap
 
-unfinished, currently writing the code
+reads & writes bitmaps
