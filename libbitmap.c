@@ -63,6 +63,7 @@ pixel_t bmGetPixel(int x, int y, bitmap_t* bitmap)
 
 bitmap_t* bmRead(const char* filename)
 {
+    printf("bmRead: reading %s\n", filename);
     bitmap_t* ret;
     
     FILE* file = fopen(filename, "rb");
@@ -172,13 +173,53 @@ bitmap_t* bmRead(const char* filename)
 
 bitmap_t* bmConstruct(int width, int height, pixel_t* pixelarray)
 {
-    bitmap_t* ret;
+    printf("bmConstruct: constructing bitmap...\n");
+    
+    bitmap_t* ret = malloc(sizeof(bitmap_t));
+    unsigned char file_header[BM_FILE_HEADER_SIZE];
+    unsigned char image_header[BM_IMAGE_HEADER_SIZE];
+    
+    file_header[0] = 'B';
+    file_header[1] = 'M';
+    WriteInt(file_header, BM_PIXEL_STORAGE_OFFSET, 54);
+    WriteShort(image_header, BM_COLOR_PLANES_OFFSET, 1);
+    WriteShort(image_header, BM_BITS_PER_PIXEL_OFFSET, 24);
+    WriteInt(image_header, BM_COMPRESSION_OFFSET, 0);
+    WriteInt(image_header, BM_WIDTH_OFFSET, width);
+    WriteInt(image_header, BM_HEIGHT_OFFSET, height);
+    WriteInt(image_header, BM_IMAGE_HEADER_SIZE_OFFSET, BM_IMAGE_HEADER_SIZE);
+    
+    memcpy(ret->file_header, file_header, BM_FILE_HEADER_SIZE);
+    memcpy(ret->image_header, image_header, BM_IMAGE_HEADER_SIZE);
+    
+    ret->width = width;
+    ret->height = height;
+    ret->bits_per_pixels = 24;
+    ret->compression_mode = 0;
+    ret->scanline_size = ((ret->bits_per_pixels * width + 31)/32) * 4;
+    
+    pixel_t* pixels = malloc(sizeof(pixel_t) * width * height);
+    for(int i = 0; i < width * height; i++)
+    {
+        pixel_t pixel;
+        pixel = pixelarray[i];
+        pixels[i] = pixel;
+    }
+    
+    ret->pixels = pixels;
+    ret->image_size = ret->scanline_size * height;
+    ret->pixel_data_size = ret->image_size;
+    ret->image_header_size = BM_IMAGE_HEADER_SIZE;
+    
+    printf("bmConstruct: Constructed bitmap!\n");
     
     return ret;
 }
 
 int bmWrite(bitmap_t* bitmap, const char* filename)
 {
+    printf("bmWrite: writing bitmap to disk...\n");
+    
     FILE *file = fopen(filename, "w");
     
     if(!file)
@@ -189,9 +230,6 @@ int bmWrite(bitmap_t* bitmap, const char* filename)
     
     unsigned char file_header[BM_FILE_HEADER_SIZE];
     unsigned char image_header[BM_IMAGE_HEADER_SIZE];
-    
-    memset(file_header, 0x00, BM_FILE_HEADER_SIZE);
-    memset(image_header, 0x00, BM_IMAGE_HEADER_SIZE);
     
     unsigned char header[BM_FILE_HEADER_SIZE + BM_IMAGE_HEADER_SIZE];
     
@@ -240,10 +278,10 @@ int bmWrite(bitmap_t* bitmap, const char* filename)
     }*/
     
     fwrite(data, 1, bitmap->pixel_data_size, file);
-    
-    printf("SCAN LINE / 4: %d\n", bitmap->scanline_size);
-    
     fclose(file);
+    
+    printf("bmWrite complete!\n");
+    
     free(data);
     
     return BM_OK;
@@ -251,7 +289,7 @@ int bmWrite(bitmap_t* bitmap, const char* filename)
 
 unsigned int* bmPixelArrayToIntArray(int width, int height, pixel_t* pixelArray)
 {
-    unsigned int* array = malloc(sizeof(unsigned int) * width * height);
+    uint32_t* array = malloc(sizeof(uint32_t) * width * height);
     
     if(!array)
         return NULL;
@@ -275,7 +313,7 @@ unsigned int* bmPixelArrayToIntArray(int width, int height, pixel_t* pixelArray)
     return array;
 }
 
-int bmSetPixelArrayFromIntArray(int width, int height, unsigned int* array, pixel_t* pixelArray)
+uint32_t bmSetPixelArrayFromIntArray(int width, int height, uint32_t* array, pixel_t* pixelArray)
 {
     for(int i = 0; i < width * height; i++)
     {

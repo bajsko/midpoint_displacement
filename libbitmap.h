@@ -83,8 +83,8 @@ int bmWrite(bitmap_t* bitmap, const char* filename);
 int bmFree(bitmap_t* bitmap);
 
 pixel_t bmGetPixel(int x, int y, bitmap_t* bitmap);
-unsigned int* bmPixelArrayToIntArray(int width, int height, pixel_t* pixelArray);
-int bmSetPixelArrayFromIntArray(int width, int height, unsigned int* array, pixel_t* pixelArray);
+uint32_t* bmPixelArrayToIntArray(int width, int height, pixel_t* pixelArray);
+uint32_t bmSetPixelArrayFromIntArray(int width, int height, uint32_t* array, pixel_t* pixelArray);
 
 
 #endif /* bitmap_h */
